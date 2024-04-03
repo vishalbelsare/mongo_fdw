@@ -465,6 +465,10 @@ out the contribution guidelines [here][3].
 Useful links
 ------------
 
+### Documentation
+
+ - For details, please refer to [mongo_fdw documentation][5].
+
 ### Source code
 
 Reference FDW realization, `postgres_fdw`
@@ -510,3 +514,4 @@ See the [`LICENSE`][4] file for full details.
 [2]: https://github.com/enterprisedb/mongo_fdw/issues/new
 [3]: CONTRIBUTING.md
 [4]: LICENSE
+[5]: https://www.enterprisedb.com/docs/mongo_data_adapter/latest/

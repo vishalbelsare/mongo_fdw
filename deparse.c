@@ -25,13 +25,7 @@
 #endif
 #include "mongoc.h"
 #include "mongo_query.h"
-#if PG_VERSION_NUM < 120000
-#include "nodes/relation.h"
-#include "optimizer/var.h"
-#endif
-#if PG_VERSION_NUM >= 120000
 #include "optimizer/optimizer.h"
-#endif
 #include "parser/parsetree.h"
 #include "utils/rel.h"
 #include "utils/syscache.h"
@@ -677,9 +671,5 @@ mongo_is_foreign_pathkey(PlannerInfo *root, RelOptInfo *baserel,
 bool
 mongo_is_builtin(Oid oid)
 {
-#if PG_VERSION_NUM >= 120000
 	return (oid < FirstGenbkiObjectId);
-#else
-	return (oid < FirstBootstrapObjectId);
-#endif
 }

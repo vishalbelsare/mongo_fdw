@@ -16,12 +16,7 @@
 #include "mongo_wrapper.h"
 
 #include "access/htup_details.h"
-#if PG_VERSION_NUM < 120000
-#include "access/sysattr.h"
-#endif
-#if PG_VERSION_NUM >= 120000
 #include "access/table.h"
-#endif
 #include "catalog/heap.h"
 #include "catalog/pg_operator.h"
 #include "catalog/pg_type.h"
@@ -36,14 +31,9 @@
 #if PG_VERSION_NUM >= 140000
 #include "optimizer/appendinfo.h"
 #endif
-#if PG_VERSION_NUM >= 120000
 #include "optimizer/optimizer.h"
-#endif
 #include "optimizer/paths.h"
 #include "optimizer/tlist.h"
-#if PG_VERSION_NUM < 120000
-#include "optimizer/var.h"
-#endif
 #include "parser/parsetree.h"
 #if PG_VERSION_NUM >= 160000
 #include "parser/parse_relation.h"
@@ -227,12 +217,10 @@ static void mongo_add_foreign_grouping_paths(PlannerInfo *root,
 											 RelOptInfo *input_rel,
 											 RelOptInfo *grouped_rel,
 											 GroupPathExtraData *extra);
-#if PG_VERSION_NUM >= 120000
 static void mongo_add_foreign_final_paths(PlannerInfo *root,
 										  RelOptInfo *input_rel,
 										  RelOptInfo *final_rel,
 										  FinalPathExtraData *extra);
-#endif
 static void mongoEstimateCosts(RelOptInfo *baserel, Cost *startup_cost,
 							   Cost *total_cost, Oid foreigntableid);
 
@@ -248,11 +236,9 @@ static void mongo_add_paths_with_pathkeys(PlannerInfo *root,
 static EquivalenceMember *mongo_find_em_for_rel_target(PlannerInfo *root,
 													   EquivalenceClass *ec,
 													   RelOptInfo *rel);
-#if PG_VERSION_NUM >= 120000
 static void mongo_add_foreign_ordered_paths(PlannerInfo *root,
 											RelOptInfo *input_rel,
 											RelOptInfo *ordered_rel);
-#endif
 
 /* The null action object used for pure validation */
 #if PG_VERSION_NUM < 130000
@@ -692,11 +678,7 @@ mongoGetForeignPlan(PlannerInfo *root,
 		if (var->varattno >= 0)
 			continue;
 
-#if PG_VERSION_NUM >= 120000
 		attr = SystemAttributeDefinition(var->varattno);
-#else
-		attr = SystemAttributeDefinition(var->varattno, false);
-#endif
 		ereport(ERROR,
 				(errcode(ERRCODE_FDW_COLUMN_NAME_NOT_FOUND),
 				 errmsg("system attribute \"%s\" can't be fetched from remote relation",
@@ -2982,7 +2964,6 @@ mongoGetForeignJoinPaths(PlannerInfo *root, RelOptInfo *joinrel,
 	 * Create a new join path and add it to the joinrel which represents a
 	 * join between foreign tables.
 	 */
-#if PG_VERSION_NUM >= 120000
 	joinpath = create_foreign_join_path(root,
 										joinrel,
 										NULL,
@@ -2993,18 +2974,6 @@ mongoGetForeignJoinPaths(PlannerInfo *root, RelOptInfo *joinrel,
 										joinrel->lateral_relids,
 										epq_path,
 										NULL);	/* no fdw_private */
-#else
-	joinpath = create_foreignscan_path(root,
-									   joinrel,
-									   NULL,	/* default pathtarget */
-									   joinrel->rows,
-									   startup_cost,
-									   total_cost,
-									   NIL, /* no pathkeys */
-									   joinrel->lateral_relids,
-									   epq_path,
-									   NIL);	/* no fdw_private */
-#endif
 
 	/* Add generated path into joinrel by add_path(). */
 	add_path(joinrel, (Path *) joinpath);
@@ -3511,12 +3480,8 @@ mongoGetForeignUpperPaths(PlannerInfo *root, UpperRelationKind stage,
 		return;
 
 	/* Ignore stages we don't support; and skip any duplicate calls. */
-#if PG_VERSION_NUM >= 120000
 	if ((stage != UPPERREL_GROUP_AGG && stage != UPPERREL_ORDERED &&
 		 stage != UPPERREL_FINAL) ||
-#else
-	if (stage != UPPERREL_GROUP_AGG ||
-#endif
 		output_rel->fdw_private)
 		return;
 
@@ -3525,7 +3490,6 @@ mongoGetForeignUpperPaths(PlannerInfo *root, UpperRelationKind stage,
 	fpinfo->stage = stage;
 	output_rel->fdw_private = fpinfo;
 
-#if PG_VERSION_NUM >= 120000
 	switch (stage)
 	{
 		case UPPERREL_GROUP_AGG:
@@ -3543,10 +3507,6 @@ mongoGetForeignUpperPaths(PlannerInfo *root, UpperRelationKind stage,
 			elog(ERROR, "unexpected upper relation: %d", (int) stage);
 			break;
 	}
-#else
-	mongo_add_foreign_grouping_paths(root, input_rel, output_rel,
-									 (GroupPathExtraData *) extra);
-#endif
 }
 
 /*
@@ -3614,7 +3574,6 @@ mongo_add_foreign_grouping_paths(PlannerInfo *root, RelOptInfo *input_rel,
 #endif
 
 	/* Create and add foreign path to the grouping relation. */
-#if PG_VERSION_NUM >= 120000
 	grouppath = create_foreign_upper_path(root,
 										  grouped_rel,
 										  grouped_rel->reltarget,
@@ -3624,18 +3583,6 @@ mongo_add_foreign_grouping_paths(PlannerInfo *root, RelOptInfo *input_rel,
 										  NIL,	/* no pathkeys */
 										  NULL,
 										  NIL); /* no fdw_private */
-#else
-	grouppath = create_foreignscan_path(root,
-										grouped_rel,
-										grouped_rel->reltarget,
-										num_groups,
-										startup_cost,
-										total_cost,
-										NIL,	/* no pathkeys */
-										grouped_rel->lateral_relids,
-										NULL,
-										NIL);	/* no fdw_private */
-#endif
 
 	/* Add generated path into grouped_rel by add_path(). */
 	add_path(grouped_rel, (Path *) grouppath);
@@ -3963,7 +3910,6 @@ mongo_add_paths_with_pathkeys(PlannerInfo *root, RelOptInfo *rel,
 								 useful_pathkeys,
 								 -1.0);
 
-#if PG_VERSION_NUM >= 120000
 		if (IS_SIMPLE_REL(rel))
 			add_path(rel, (Path *)
 					 create_foreignscan_path(root, rel,
@@ -3986,18 +3932,6 @@ mongo_add_paths_with_pathkeys(PlannerInfo *root, RelOptInfo *rel,
 											  rel->lateral_relids,
 											  sorted_epq_path,
 											  NIL));
-#else
-		add_path(rel, (Path *)
-				 create_foreignscan_path(root, rel,
-										 NULL,
-										 rel->rows,
-										 startup_cost,
-										 total_cost,
-										 useful_pathkeys,
-										 rel->lateral_relids,
-										 sorted_epq_path,
-										 NIL));
-#endif
 	}
 }
 
@@ -4043,7 +3977,6 @@ mongo_find_em_for_rel(PlannerInfo *root, EquivalenceClass *ec, RelOptInfo *rel)
  * Given input_rel contains the source-data Paths.  The paths are added to the
  * given ordered_rel.
  */
-#if PG_VERSION_NUM >= 120000
 static void
 mongo_add_foreign_ordered_paths(PlannerInfo *root, RelOptInfo *input_rel,
 								RelOptInfo *ordered_rel)
@@ -4404,7 +4337,6 @@ mongo_add_foreign_final_paths(PlannerInfo *root, RelOptInfo *input_rel,
 	/* and add it to the final_rel */
 	add_path(final_rel, (Path *) final_path);
 }
-#endif							/* PG_VERSION_NUM >= 120000 */
 
 /*
  * mongo_find_em_for_rel_target

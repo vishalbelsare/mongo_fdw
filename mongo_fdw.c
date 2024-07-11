@@ -56,9 +56,9 @@ PG_MODULE_MAGIC;
 
 /*
  * In PG 9.5.1 the number will be 90501,
- * our version is 5.5.1 so number will be 50501
+ * our version is 5.5.2 so number will be 50502
  */
-#define CODE_VERSION   50501
+#define CODE_VERSION   50502
 
 /*
  * Macro to check unsupported sorting methods.  Currently, ASC NULLS FIRST and

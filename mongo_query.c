@@ -197,18 +197,17 @@ mongo_query_document(ForeignScanState *scanStateNode)
 	BSON		root_pipeline;
 	BSON		match_stage;
 	int			root_index = 0;
-	List	   *joinclauses;
+	List	   *joinclauses = NIL;
 	List	   *colnum_list;
 	List	   *colname_list = NIL;
 	List	   *isouter_list = NIL;
 	List	   *rti_list;
 	List	   *pathkey_list;
 	List	   *is_ascsort_list;
-	char	   *inner_relname;
-	char	   *outer_relname;
+	char	   *inner_relname = NULL;
+	char	   *outer_relname = NULL;
 	HTAB	   *columnInfoHash;
-	int			jointype;
-	int			natts;
+	int			jointype = 0;
 	bool		has_limit;
 
 	/* Retrieve data passed by planning phase */
@@ -217,10 +216,16 @@ mongo_query_document(ForeignScanState *scanStateNode)
 	rti_list = list_nth(PrivateList, mongoFdwPrivateJoinClauseRtiList);
 	isouter_list = list_nth(PrivateList, mongoFdwPrivateJoinClauseIsOuterList);
 
-	/* Length should be same for all lists of column information */
-	natts = list_length(colname_list);
-	Assert(natts == list_length(colnum_list) && natts == list_length(rti_list)
-		   && natts == list_length(isouter_list));
+#ifdef USE_ASSERT_CHECKING
+	{
+		/* Length should be same for all lists of column information */
+		int		natts = list_length(colname_list);
+
+		Assert(natts == list_length(colnum_list) &&
+			   natts == list_length(rti_list) &&
+			   natts == list_length(isouter_list));
+	}
+#endif
 
 	/* Store information in the hash-table */
 	columnInfoHash = column_info_hash(colname_list, colnum_list, rti_list,
@@ -998,7 +1003,7 @@ mongo_get_column_list(PlannerInfo *root, RelOptInfo *foreignrel,
 	ListCell   *lc;
 	RelOptInfo *scanrel;
 	MongoFdwRelationInfo *fpinfo = (MongoFdwRelationInfo *) foreignrel->fdw_private;
-	MongoFdwRelationInfo *ofpinfo;
+	MongoFdwRelationInfo *ofpinfo = NULL;
 
 	scanrel = IS_UPPER_REL(foreignrel) ? fpinfo->outerrel : foreignrel;
 

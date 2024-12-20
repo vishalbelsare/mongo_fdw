@@ -496,8 +496,8 @@ mongoGetForeignPaths(PlannerInfo *root,
 {
 	Path	   *foreignPath;
 	MongoFdwOptions *options;
-	Cost		startupCost;
-	Cost		totalCost;
+	Cost		startupCost = 0;
+	Cost		totalCost = 0;
 
 	/* Fetch options */
 	options = mongo_get_options(foreigntableid);
@@ -639,7 +639,7 @@ mongoGetForeignPlan(PlannerInfo *root,
 	List	   *quals = NIL;
 	MongoFdwRelType mongofdwreltype;
 	MongoRelQualInfo *qual_info;
-	MongoFdwRelationInfo *ofpinfo;
+	MongoFdwRelationInfo *ofpinfo = NULL;
 	List	   *pathKeyList = NIL;
 	List	   *isAscSortList = NIL;
 	bool		has_final_sort = false;
@@ -2177,7 +2177,7 @@ fill_tuple_slot(const BSON *bsonDocument, const char *bsonDocumentKey,
 		Oid			columnArrayTypeId = InvalidOid;
 		bool		compatibleTypes = false;
 		const char *bsonFullKey;
-		int32		attnum;
+		int32		attnum = 0;
 		bool		is_agg = false;
 
 		if (!strncmp(bsonKey, "AGG_RESULT_KEY", 5) && bsonType == BSON_TYPE_INT32)

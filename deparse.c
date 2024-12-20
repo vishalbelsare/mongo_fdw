@@ -567,7 +567,8 @@ mongo_append_column_name(Var *column, BSON *child_doc, pipeline_cxt *context)
 		return;
 
 	if (columnInfo->isOuter && context->isJoinClause)
-		field = psprintf("$$v_%s", columnInfo->colName);
+		field = psprintf("$$%s",
+						 get_varname_for_outer_col(columnInfo->colName));
 	else
 		field = psprintf("$%s", columnInfo->colName);
 
@@ -599,7 +600,8 @@ mongo_add_null_check(Var *column, BSON *expr, pipeline_cxt *context)
 		return;
 
 	if (columnInfo->isOuter && context->isJoinClause)
-		field = psprintf("$$v_%s", columnInfo->colName);
+		field = psprintf("$$%s",
+						 get_varname_for_outer_col(columnInfo->colName));
 	else
 		field = psprintf("$%s", columnInfo->colName);
 

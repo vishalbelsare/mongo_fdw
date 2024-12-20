@@ -314,13 +314,8 @@ mongo_query_document(ForeignScanState *scanStateNode)
 			 */
 			if (is_outer && strcmp(colname, "*") != 0)
 			{
-				/*
-				 * Add prefix "v_" to column name to form variable name.  Need
-				 * to prefix with any lowercase letter because variable names
-				 * must begin with only a lowercase ASCII letter or a
-				 * non-ASCII character.
-				 */
-				char	   *varname = psprintf("v_%s", colname);
+				char	   *varname = psprintf("%s",
+											   get_varname_for_outer_col(colname));
 				char	   *field = psprintf("$%s", colname);
 
 				bsonAppendUTF8(&let_exprs, varname, field);
@@ -1816,3 +1811,44 @@ mongo_append_unique_var(List *varlist, Var *var)
 	return lappend(varlist, var);
 }
 #endif
+
+/*
+ * get_varname_for_outer_col
+ * 		Form variable name from outer relation column name.
+ */
+char *
+get_varname_for_outer_col(const char *str)
+{
+	static char	result[66];
+
+	/*
+	 * Add prefix "v_" to column name to form variable name.  Need to prefix
+	 * with any lowercase letter because variable names must begin with only a
+	 * lowercase ASCII letter or a non-ASCII character.
+	 */
+	sprintf(result, "v_%s", str);
+
+	/*
+	 * Also, replace occurences of dot (".") in the variable name with
+	 * underscore ("_"), because special characters other than "_" are NOT
+	 * allowed.
+	 */
+	mongo_replace_char(result + 2, '.', '_');
+
+	return result;
+}
+
+/*
+ * mongo_replace_char
+ * 		Find and replace given character from the string.
+ */
+void
+mongo_replace_char(char *str, char find, char replace)
+{
+	int			i;
+	int			len = strlen(str);
+
+	for (i = 0; i < len; i++)
+		if (str[i] == find)
+			str[i] = replace;
+}

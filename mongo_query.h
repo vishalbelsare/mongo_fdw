@@ -144,5 +144,7 @@ extern void mongo_append_expr(Expr *node, BSON *child_doc,
 extern void append_param_value(BSON *queryDocument, const char *keyName,
 							   Param *paramNode,
 							   ForeignScanState *scanStateNode);
+extern char *get_varname_for_outer_col(const char *str);
+extern void mongo_replace_char(char* str, char find, char replace);
 
 #endif							/* MONGO_QUERY_H */

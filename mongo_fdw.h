@@ -125,11 +125,7 @@
 #define POSTGRES_TO_UNIX_EPOCH_USECS 		(POSTGRES_TO_UNIX_EPOCH_DAYS * USECS_PER_DAY)
 
 /* Macro for list API backporting. */
-#if PG_VERSION_NUM < 130000
-#define mongo_list_concat(l1, l2) list_concat(l1, list_copy(l2))
-#else
 #define mongo_list_concat(l1, l2) list_concat((l1), (l2))
-#endif
 
 /* Macro for hard-coded aggregation result key */
 #define AGG_RESULT_KEY		 				"v_agg"

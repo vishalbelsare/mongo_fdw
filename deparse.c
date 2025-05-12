@@ -20,9 +20,7 @@
 
 #include "access/htup_details.h"
 #include "catalog/pg_operator.h"
-#if PG_VERSION_NUM >= 130000
 #include "common/hashfn.h"
-#endif
 #include "mongoc.h"
 #include "mongo_query.h"
 #include "optimizer/optimizer.h"

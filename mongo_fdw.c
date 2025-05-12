@@ -20,10 +20,8 @@
 #include "catalog/heap.h"
 #include "catalog/pg_operator.h"
 #include "catalog/pg_type.h"
-#if PG_VERSION_NUM >= 130000
 #include "common/hashfn.h"
 #include "common/jsonapi.h"
-#endif
 #include "miscadmin.h"
 #include "mongo_fdw.h"
 #include "mongo_query.h"
@@ -41,11 +39,7 @@
 #include "storage/ipc.h"
 #include "utils/guc.h"
 #include "utils/jsonb.h"
-#if PG_VERSION_NUM < 130000
-#include "utils/jsonapi.h"
-#else
 #include "utils/jsonfuncs.h"
-#endif
 #include "utils/rel.h"
 #include "utils/selfuncs.h"
 #include "utils/syscache.h"
@@ -250,19 +244,11 @@ static void mongo_add_foreign_ordered_paths(PlannerInfo *root,
 											RelOptInfo *ordered_rel);
 
 /* The null action object used for pure validation */
-#if PG_VERSION_NUM < 130000
-static JsonSemAction nullSemAction =
-{
-	NULL, NULL, NULL, NULL, NULL,
-	NULL, NULL, NULL, NULL, NULL
-};
-#else
 JsonSemAction nullSemAction =
 {
 	NULL, NULL, NULL, NULL, NULL,
 	NULL, NULL, NULL, NULL, NULL
 };
-#endif
 
 /*
  * Library load-time initalization, sets on_proc_exit() callback for
@@ -1417,11 +1403,7 @@ mongoPlanForeignModify(PlannerInfo *root,
 	 * Core code already has some lock on each rel being planned, so we can
 	 * use NoLock here.
 	 */
-#if PG_VERSION_NUM < 130000
-	rel = heap_open(rte->relid, NoLock);
-#else
 	rel = table_open(rte->relid, NoLock);
-#endif
 	if (operation == CMD_INSERT)
 	{
 		TupleDesc	tupdesc = RelationGetDescr(rel);
@@ -1487,11 +1469,7 @@ mongoPlanForeignModify(PlannerInfo *root,
 	if (plan->returningLists)
 		elog(ERROR, "RETURNING is not supported by this FDW");
 
-#if PG_VERSION_NUM < 130000
-	heap_close(rel, NoLock);
-#else
 	table_close(rel, NoLock);
-#endif
 
 	return list_make1(targetAttrs);
 }

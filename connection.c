@@ -15,9 +15,7 @@
 #include "postgres.h"
 
 #include "access/xact.h"
-#if PG_VERSION_NUM >= 130000
 #include "common/hashfn.h"
-#endif
 #include "mongo_wrapper.h"
 #include "utils/inval.h"
 #include "utils/syscache.h"

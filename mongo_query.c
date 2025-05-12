@@ -23,9 +23,7 @@
 #include "catalog/heap.h"
 #include "catalog/pg_collation.h"
 #include "catalog/pg_operator.h"
-#if PG_VERSION_NUM >= 130000
 #include "common/hashfn.h"
-#endif
 #include "mongoc.h"
 #include "mongo_query.h"
 #include "optimizer/optimizer.h"
@@ -1542,11 +1540,7 @@ prepare_var_list_for_baserel(Oid relid, Index varno, Bitmapset *attrs_used)
 	Assert(OidIsValid(relid));
 
 	/* Planner must have taken a lock, so request no lock here */
-#if PG_VERSION_NUM < 130000
-	relation = heap_open(relid, NoLock);
-#else
 	relation = table_open(relid, NoLock);
-#endif
 
 	tupdesc = RelationGetDescr(relation);
 
@@ -1575,11 +1569,7 @@ prepare_var_list_for_baserel(Oid relid, Index varno, Bitmapset *attrs_used)
 		}
 	}
 
-#if PG_VERSION_NUM < 130000
-	heap_close(relation, NoLock);
-#else
 	table_close(relation, NoLock);
-#endif
 
 	return tlist;
 }
@@ -1638,11 +1628,7 @@ column_info_hash(List *colname_list, List *colnum_list, List *rti_list,
 		columnInfo->colName = columnName;
 		columnInfo->isOuter = isOuter;
 
-#if PG_VERSION_NUM >= 130000
 		l4 = lnext(isouter_list, l4);
-#else
-		l4 = lnext(l4);
-#endif
 	}
 
 	return columnInfoHash;

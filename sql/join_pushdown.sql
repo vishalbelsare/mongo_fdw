@@ -445,7 +445,6 @@ SELECT t1.c1, t1.c2
   WHERE t1.c1 = t2.c2 AND t1.c2 = t2.c1) q WHERE t1.c1 % 2 = 0 ORDER BY 1,2;
 
 -- With PHVs, partitionwise join selected but no join pushdown
--- Table alias in foreign scan is different for v12, v11 and v10.
 EXPLAIN (VERBOSE, COSTS OFF)
 SELECT t1.c1, t1.phv, t2.c2, t2.phv
   FROM (SELECT 't1_phv' phv, * FROM fprt1 WHERE c1 % 2 = 0) t1 LEFT JOIN

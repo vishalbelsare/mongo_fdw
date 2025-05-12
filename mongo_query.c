@@ -187,7 +187,6 @@ mongo_query_document(ForeignScanState *scanStateNode)
 {
 	ForeignScan *fsplan = (ForeignScan *) scanStateNode->ss.ps.plan;
 	BSON	   *queryDocument = bsonCreate();
-	BSON	   *filter = bsonCreate();
 	List	   *PrivateList = fsplan->fdw_private;
 	List	   *opExpressionList = list_nth(PrivateList,
 											mongoFdwPrivateRemoteExprList);
@@ -252,28 +251,6 @@ mongo_query_document(ForeignScanState *scanStateNode)
 
 	/* Prepare array of stages */
 	bsonAppendStartArray(queryDocument, "pipeline", &root_pipeline);
-
-	/*
-	 * Add filter into query pipeline if available.  These are remote_exprs
-	 * i.e. clauses available in WHERE and those are push-able to the remote
-	 * side.
-	 */
-	if (opExpressionList)
-	{
-		pipeline_cxt context;
-
-		context.colInfoHash = columnInfoHash;
-		context.isBoolExpr = false;
-		context.isJoinClause = false;
-		context.scanStateNode = scanStateNode;
-
-		bsonAppendStartArray(filter, "pipeline", &match_stage);
-
-		/* Form equivalent WHERE clauses in MongoDB */
-		mongo_prepare_pipeline(opExpressionList, &match_stage, &context);
-
-		bsonAppendFinishArray(filter, &match_stage);
-	}
 
 	if (fmstate->relType == JOIN_REL || fmstate->relType == UPPER_JOIN_REL)
 	{
@@ -345,10 +322,6 @@ mongo_query_document(ForeignScanState *scanStateNode)
 		bsonAppendFinishObject(&lookup_object, &lookup);
 		bsonAppendFinishObject(&root_pipeline, &lookup_object);
 
-		/* $match stage. This is to add a filter */
-		if (opExpressionList)
-			bsonAppendBson(&root_pipeline, "$match", &match_stage);
-
 		/*
 		 * $unwind stage. This deconstructs an array field from the input
 		 * documents to output a document for each element.
@@ -366,8 +339,29 @@ mongo_query_document(ForeignScanState *scanStateNode)
 
 		fmstate->outerRelName = outer_relname;
 	}
-	else if (opExpressionList)
-		bsonAppendBson(&root_pipeline, "$match", &match_stage);
+
+	/*
+	 * Add filter into query pipeline if available.  These are remote_exprs
+	 * i.e. clauses available in WHERE and those are push-able to the remote
+	 * side.
+	 */
+	if (opExpressionList)
+	{
+		pipeline_cxt context;
+
+		context.colInfoHash = columnInfoHash;
+		context.isBoolExpr = false;
+		context.isJoinClause = false;
+		context.scanStateNode = scanStateNode;
+
+		bsonAppendStartObject(&root_pipeline, psprintf("%d", root_index++),
+								  &match_stage);
+
+		/* Form equivalent WHERE clauses in MongoDB */
+		mongo_prepare_pipeline(opExpressionList, &match_stage, &context);
+
+		bsonAppendFinishObject(&root_pipeline, &match_stage);
+	}
 
 	/* Add $group stage for upper relation */
 	if (fmstate->relType == UPPER_JOIN_REL || fmstate->relType == UPPER_REL)

@@ -607,13 +607,13 @@ jsonToBsonAppendElement(BSON *bb, const char *k, struct json_object *v)
 		case json_type_array:
 			{
 				int			i;
-				char		buf[10];
+				char		buf[12];
 				BSON		t;
 
 				bsonAppendStartArray(bb, k, &t);
 				for (i = 0; i < json_object_array_length(v); i++)
 				{
-					sprintf(buf, "%d", i);
+					snprintf(buf, sizeof(buf), "%d", i);
 					jsonToBsonAppendElement(&t, buf, json_object_array_get_idx(v, i));
 				}
 				bsonAppendFinishObject(bb, &t);

@@ -14,8 +14,8 @@
 #-------------------------------------------------------------------------
 
 
-MONGOC_VERSION=1.17.3
-JSONC_VERSION=0.15-20200726
+MONGOC_VERSION=1.30.2
+JSONC_VERSION=0.18-20240915
 MONGOC_INSTALL="${MONGOC_INSTALL_DIR}"
 JSONC_INSTALL="${JSONC_INSTALL_DIR}"
 
@@ -63,7 +63,7 @@ function checkout_json_lib
 function install_json_lib
 {
 	cd json-c &&
-	$CMAKE_COMMAND -DCMAKE_INSTALL_PREFIX=$JSONC_INSTALL $JSONC_CFLAGS . &&
+	$CMAKE_COMMAND -DCMAKE_INSTALL_PREFIX=$JSONC_INSTALL $JSONC_CFLAGS -DDISABLE_EXTRA_LIBS=ON . &&
 	make install &&
 	cd ..
 }

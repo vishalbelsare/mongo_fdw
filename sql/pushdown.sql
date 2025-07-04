@@ -364,6 +364,16 @@ EXPLAIN (VERBOSE, COSTS FALSE)
 SELECT name, pass FROM f_test_tbl3 WHERE pass = true ORDER BY name;
 SELECT name, pass FROM f_test_tbl3 WHERE pass = true ORDER BY name;
 
+-- FDW-729: print query pipeline to find remote query
+SET mongo_fdw.log_remote_query TO true;
+SET client_min_messages TO log;
+SELECT c1, c2, c6 FROM f_test_tbl1 e
+  WHERE c6 > 3000
+  ORDER BY c1 ASC NULLS FIRST;
+RESET client_min_messages;
+RESET mongo_fdw.log_remote_query;
+
+
 -- Cleanup
 DELETE FROM f_mongo_test WHERE a != 0;
 DELETE FROM f_test_tbl2 WHERE c1 IS NULL;

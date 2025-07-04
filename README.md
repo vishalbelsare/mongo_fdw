@@ -85,6 +85,9 @@ network traffic between local PostgreSQL and remote MongoDB servers.
   * `mongo_fdw.enable_order_by_pushdown`: If `true`, pushes the order by
 	operation to the foreign server, instead of fetching rows from the
 	foreign server and performing the sort locally. Default is `true`.
+  * `mongo_fdw.log_remote_query`: If `true`, logs the remote query that would
+    be executed on MongoDB. Intended for debugging purposes only. Default is
+    `false`.
 
 Supported platforms
 -------------------

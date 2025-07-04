@@ -87,6 +87,7 @@ PG_MODULE_MAGIC;
 static bool enable_join_pushdown = true;
 static bool enable_order_by_pushdown = true;
 static bool enable_aggregate_pushdown = true;
+static bool log_remote_query = false;
 
 /*
  * This enum describes what's kept in the fdw_private list for a ForeignPath.
@@ -307,6 +308,21 @@ _PG_init(void)
 							 NULL,
 							 &enable_aggregate_pushdown,
 							 true,
+							 PGC_SUSET,
+							 0,
+							 NULL,
+							 NULL,
+							 NULL);
+
+	/*
+	 * GUC to control whether remote queries are included in PostgreSQL logs.
+	 * Disabled by default.
+	 */
+	DefineCustomBoolVariable("mongo_fdw.log_remote_query",
+							 "Enable/Disable remote query logging",
+							 NULL,
+							 &log_remote_query,
+							 false,
 							 PGC_SUSET,
 							 0,
 							 NULL,
@@ -1342,6 +1358,34 @@ mongoIterateForeignScan(ForeignScanState *node)
 			collectionName = fmstate->outerRelName;
 		else
 			collectionName = fmstate->options->collectionName;
+
+		/*
+		 * Logs the query pipeline (in extended JSON format) when the
+		 * log_remote_query GUC is enabled.  This represents the remote query
+		 * intended to run on the MongoDB server.
+		 */
+		if (log_remote_query)
+		{
+			char	   *ext_json;
+			uint32		len;
+
+			/* Get readable query pipeline in the extended json format. */
+			ext_json = bson_as_relaxed_extended_json(queryDocument, NULL);
+
+			/*
+			 * Constructs a remote query compatible with MongoDB by
+			 * transforming the relaxed extended JSON.  This is done by
+			 * prepending "db.<collection_name>.aggregate(" and removing the
+			 * ''{ "pipeline":'' wrapper from the JSON string.
+			 */
+			len = strlen(ext_json);
+			ext_json[len - 1] = '\0';		/* Remove last '}' */
+			ereport(LOG,
+					errmsg("remote query: db.%s.aggregate(%s)", collectionName,
+						   ext_json + 14));	/* 14 = length of '{ "pipeline" :' */
+
+			bson_free(ext_json);
+		}
 
 		mongoCursor = mongoCursorCreate(fmstate->mongoConnection,
 										fmstate->options->svr_database,

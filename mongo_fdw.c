@@ -1366,25 +1366,28 @@ mongoIterateForeignScan(ForeignScanState *node)
 		 */
 		if (log_remote_query)
 		{
-			char	   *ext_json;
-			uint32		len;
+			char	   *ext_json = NULL;
+			size_t		length = 0;
 
 			/* Get readable query pipeline in the extended json format. */
-			ext_json = bson_as_relaxed_extended_json(queryDocument, NULL);
+			ext_json = bson_as_relaxed_extended_json(queryDocument, &length);
 
-			/*
-			 * Constructs a remote query compatible with MongoDB by
-			 * transforming the relaxed extended JSON.  This is done by
-			 * prepending "db.<collection_name>.aggregate(" and removing the
-			 * ''{ "pipeline":'' wrapper from the JSON string.
-			 */
-			len = strlen(ext_json);
-			ext_json[len - 1] = '\0';		/* Remove last '}' */
-			ereport(LOG,
-					errmsg("remote query: db.%s.aggregate(%s)", collectionName,
-						   ext_json + 14));	/* 14 = length of '{ "pipeline" :' */
+			if (ext_json && length > 0)
+			{
+				/*
+				 * Constructs a remote query compatible with MongoDB by
+				 * transforming the relaxed extended JSON.  This is done by
+				 * prepending "db.<collection_name>.aggregate(" and removing
+				 * the '{ "pipeline":' wrapper from the JSON string.
+				 */
+				ext_json[length - 1] = '\0';		/* Remove last '}' */
+				ereport(LOG,
+						errmsg("remote query: db.%s.aggregate(%s)",
+							   collectionName,
+							   ext_json + 14));	/* 14 = length of '{ "pipeline" :' */
 
-			bson_free(ext_json);
+				bson_free(ext_json);
+			}
 		}
 
 		mongoCursor = mongoCursorCreate(fmstate->mongoConnection,

@@ -1799,14 +1799,14 @@ mongo_append_unique_var(List *varlist, Var *var)
 char *
 get_varname_for_outer_col(const char *str)
 {
-	static char	result[66];
+	static char	result[NAMEDATALEN + 2];
 
 	/*
 	 * Add prefix "v_" to column name to form variable name.  Need to prefix
 	 * with any lowercase letter because variable names must begin with only a
 	 * lowercase ASCII letter or a non-ASCII character.
 	 */
-	sprintf(result, "v_%s", str);
+	snprintf(result, sizeof(result), "v_%s", str);
 
 	/*
 	 * Also, replace occurences of dot (".") in the variable name with

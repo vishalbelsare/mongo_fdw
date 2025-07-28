@@ -3236,7 +3236,35 @@ mongo_foreign_join_ok(PlannerInfo *root, RelOptInfo *joinrel,
 				joinclauses = lappend(joinclauses, rinfo);
 			}
 			else
+			{
+				ListCell   *cell;
+				List	   *local_var_list = pull_var_clause((Node *) rinfo->clause,
+															 PVC_RECURSE_PLACEHOLDERS);
+
+				/*
+				 * Don't push-down join when whole row reference and/or full
+				 * document retrieval is involved in the join clause.
+				 */
+				foreach(cell, local_var_list)
+				{
+					Var		   *var = lfirst(cell);
+
+					Assert(IsA(var, Var));
+
+					/* Don't support whole row reference. */
+					if (var->varattno == 0)
+						return false;
+
+					rte = planner_rt_fetch(var->varno, root);
+					colname = get_attname(rte->relid, var->varattno, false);
+
+					/* Don't support full document retrieval */
+					if (strcmp("__doc", colname) == 0)
+						return false;
+				}
+
 				fpinfo->local_conds = lappend(fpinfo->local_conds, rinfo);
+			}
 		}
 	}
 

@@ -30,6 +30,8 @@ CREATE FOREIGN TABLE test_varchar ( __doc varchar)
   SERVER mongo_server OPTIONS (database 'mongo_fdw_regress', collection 'warehouse');
 CREATE FOREIGN TABLE f_test_tbl4 (_id NAME, c1 INTEGER, c2 TEXT, c3 CHAR(9), c4 INTEGER, c5 pg_catalog.Date, c6 DECIMAL, c7 INTEGER, c8 INTEGER)
   SERVER mongo_server1 OPTIONS (database 'mongo_fdw_regress', collection 'test_tbl1');
+CREATE FOREIGN TABLE f_test_tbl5 (_id NAME)
+  SERVER mongo_server OPTIONS (database 'mongo_fdw_regress', collection 'warehouse');
 
 INSERT INTO f_test_tbl1 VALUES (0, 1500, 'EMP15', 'FINANCE', 1300, '2000-12-25', 950.0, 400, 60);
 INSERT INTO f_test_tbl1 VALUES (0, 1600, 'EMP16', 'ADMIN', 600);
@@ -295,17 +297,32 @@ SELECT d.c1, d.c2, e.c1, e.c2, e.c6, e.c8
 SELECT d.c1, d.c2, e.c1, e.c2, e.c6, e.c8
   FROM f_test_tbl2 d LEFT OUTER JOIN f_test_tbl1 e ON (ABS(d.c1) = e.c8) ORDER BY 1, 3;
 
--- Don't pushdown when whole row reference is involved.
+-- Don't pushdown when whole row reference is involved in the target list.
 EXPLAIN (COSTS OFF)
 SELECT d, e
   FROM f_test_tbl1 d LEFT JOIN f_test_tbl2 e ON (e.c1 = d.c8) LEFT JOIN f_test_tbl1 f ON (f.c8 = e.c1) ORDER BY e.c1 OFFSET 65;
+-- FDW-733: Don't pushdown when whole row reference is involved in the join
+-- clause.
+EXPLAIN (COSTS OFF)
+SELECT f_test_tbl5._id FROM f_test_tbl5 JOIN test_varchar ON (test_varchar.*::text) = (f_test_tbl5._id) ORDER BY 1;
 
--- Don't pushdown when full document retrieval is involved.
+-- Don't pushdown when full document retrieval is involved in the target list.
 EXPLAIN (COSTS OFF)
 SELECT json_data.key AS key1, json_data.value AS value1
   FROM test_text, test_varchar, json_each_text(test_text.__doc::json) AS json_data WHERE key NOT IN ('_id') ORDER BY json_data.key COLLATE "C";
 SELECT json_data.key AS key1, json_data.value AS value1
   FROM test_text, test_varchar, json_each_text(test_text.__doc::json) AS json_data WHERE key NOT IN ('_id') ORDER BY json_data.key COLLATE "C";
+-- FDW-733: Don't pushdown when full document retrieval is involved in the
+-- join clause.
+EXPLAIN (COSTS OFF)
+SELECT test_varchar.__doc::json->'_id'->>'$oid' FROM test_varchar JOIN f_test_tbl5 ON f_test_tbl5._id = test_varchar.__doc::json->'_id'->>'$oid' ORDER BY 1;
+SELECT test_varchar.__doc::json->'_id'->>'$oid' FROM test_varchar JOIN f_test_tbl5 ON f_test_tbl5._id = test_varchar.__doc::json->'_id'->>'$oid' ORDER BY 1;
+EXPLAIN (COSTS OFF)
+SELECT f_test_tbl5._id FROM f_test_tbl5 JOIN test_varchar ON test_varchar.__doc::json->'_id'->>'$oid' = f_test_tbl5._id ORDER BY 1;
+SELECT f_test_tbl5._id FROM f_test_tbl5 JOIN test_varchar ON test_varchar.__doc::json->'_id'->>'$oid' = f_test_tbl5._id ORDER BY 1;
+EXPLAIN (COSTS OFF)
+SELECT f_test_tbl5._id FROM f_test_tbl5, test_varchar WHERE test_varchar.__doc::json->'_id'->>'$oid' = f_test_tbl5._id ORDER BY 1;
+SELECT f_test_tbl5._id FROM f_test_tbl5, test_varchar WHERE test_varchar.__doc::json->'_id'->>'$oid' = f_test_tbl5._id ORDER BY 1;
 
 -- Join two tables from two different foreign servers.
 EXPLAIN (COSTS OFF)
@@ -598,6 +615,7 @@ DROP FOREIGN TABLE f_test_tbl1;
 DROP FOREIGN TABLE f_test_tbl2;
 DROP FOREIGN TABLE f_test_tbl3;
 DROP FOREIGN TABLE f_test_tbl4;
+DROP FOREIGN TABLE f_test_tbl5;
 DROP FOREIGN TABLE test_text;
 DROP FOREIGN TABLE test_varchar;
 DROP TABLE l_test_tbl1;

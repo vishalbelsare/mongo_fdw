@@ -433,6 +433,12 @@ Limitations
     `NAMEDATALEN` constant in `src/include/pg_config_manual.h`, compile,
     and re-install.
 
+  - Column names containing a dollar sign (`$`) at the start or immediately following
+    a dot are not supported (e.g., `$field`, `nested.$field`). While MongoDB
+    allows storing these field names, they cannot be referenced in aggregation
+    pipeline expressions, causing queries to return empty results. Column names
+    with `$` in any other position (e.g., `field$name`, `col$`) function normally.
+
 Contributing
 ------------
 

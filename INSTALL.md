@@ -139,12 +139,33 @@ EDB Postgres Advanced Server.
 
 4. Running regression test.
 
+   Before running the regression tests, you must ensure the test environment is
+   properly initialized.
+
+   Pre-requisites:
+    1. Environment Variables: Set the following variables to match your MongoDB
+       configuration. If not set, the tests will attempt to use the defaults found
+       in `mongodb_init.sh`:
+
+       * `MONGO_HOST`, `MONGO_PORT`, `MONGO_USER_NAME`, `MONGO_PWD`
+
+    2. Database & User Setup: Ensure that the MongoDB instance is running and
+       that the users and databases specified in `mongodb_init.sh` have been
+       created with appropriate permissions.
+
+    3. Test Data Seeding: Execute the initialization script to generate the
+       necessary datasets for the regression suite:
+
+       ```sh
+       sh mongodb_init.sh
+       ```
+
+   Execution:
+   Once the environment is prepared, run the tests using:
+
     ```sh
     make USE_PGXS=1 installcheck
     ```
-   However, make sure to set the `MONGO_HOST`, `MONGO_PORT`, `MONGO_USER_NAME`,
-   and `MONGO_PWD` environment variables correctly. The default settings can be
-   found in the `mongodb_init.sh` script.
 
 
 If you run into any issues, please [let us know][2].

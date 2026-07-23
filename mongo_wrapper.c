@@ -14,6 +14,7 @@
  */
 #include "postgres.h"
 
+#include <math.h>
 #include <mongoc.h>
 #include "mongo_wrapper.h"
 
@@ -344,6 +345,61 @@ bsonIterSubObject(BSON_ITERATOR *it, BSON *b)
 	return true;
 }
 
+/*
+ * bson_double_to_int
+ *		Validate a BSON double against the bounds of the target integer
+ *		type, rejecting NaN, Infinity, and out-of-range values, and return
+ *		it converted to int64.
+ *
+ * maxExact should be true when maxVal is exactly representable as a double
+ * (int16/int32 bounds are), and false when it isn't (the int64 max isn't,
+ * since it rounds up to the next representable double), so that values at
+ * or above the rounded max are rejected too.
+ */
+static int64
+bson_double_to_int(double val, int64 minVal, int64 maxVal, bool maxExact,
+					const char *typeName)
+{
+	/* Check for NaN */
+	if (isnan(val))
+		ereport(ERROR,
+				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+				 errmsg("cannot convert NaN to %s", typeName)));
+
+	/* Check for Infinity */
+	if (isinf(val))
+		ereport(ERROR,
+				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+				 errmsg("cannot convert infinity to %s", typeName)));
+
+	/* Check for integer range overflow */
+	if (val < (double) minVal ||
+		(maxExact ? val > (double) maxVal : val >= (double) maxVal))
+		ereport(ERROR,
+				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+				 errmsg("value \"%f\" is out of range for type %s",
+						val, typeName)));
+
+	return (int64) val;
+}
+
+/*
+ * bson_int64_to_int
+ *		Validate a BSON int64 against the bounds of the target integer
+ *		type, rejecting out-of-range values, and return it.
+ */
+static int64
+bson_int64_to_int(int64 val, int64 minVal, int64 maxVal, const char *typeName)
+{
+	if (val < minVal || val > maxVal)
+		ereport(ERROR,
+				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+				 errmsg("value \"%ld\" is out of range for type %s",
+						val, typeName)));
+
+	return val;
+}
+
 int32_t
 bsonIterInt32(BSON_ITERATOR *it)
 {
@@ -353,29 +409,13 @@ bsonIterInt32(BSON_ITERATOR *it)
 		case BSON_TYPE_BOOL:
 			return (int32) bson_iter_bool(it);
 		case BSON_TYPE_DOUBLE:
-			{
-				double		val = bson_iter_double(it);
-
-				if (val < PG_INT32_MIN || val > PG_INT32_MAX)
-					ereport(ERROR,
-							(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-							 errmsg("value \"%f\" is out of range for type integer",
-									val)));
-
-				return (int32) val;
-			}
+			return (int32) bson_double_to_int(bson_iter_double(it),
+											  PG_INT32_MIN, PG_INT32_MAX,
+											  true, "integer");
 		case BSON_TYPE_INT64:
-			{
-				int64		val = bson_iter_int64(it);
-
-				if (val < PG_INT32_MIN || val > PG_INT32_MAX)
-					ereport(ERROR,
-							(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-							 errmsg("value \"%ld\" is out of range for type integer",
-									val)));
-
-				return (int32) val;
-			}
+			return (int32) bson_int64_to_int(bson_iter_int64(it),
+											 PG_INT32_MIN, PG_INT32_MAX,
+											 "integer");
 		case BSON_TYPE_INT32:
 			return bson_iter_int32(it);
 		default:
@@ -386,7 +426,62 @@ bsonIterInt32(BSON_ITERATOR *it)
 int64_t
 bsonIterInt64(BSON_ITERATOR *it)
 {
+	BSON_ASSERT(it);
+
+	/*
+	 * Handle Double separately to prevent undefined behavior from NaN,
+	 * Infinity, or overflow during the cast to int64.
+	 */
+	if (ITER_TYPE(it) == BSON_TYPE_DOUBLE)
+		return bson_double_to_int(bson_iter_double(it),
+								  PG_INT64_MIN, PG_INT64_MAX,
+								  false, "bigint");
+
+	/*
+	 * For all other types (Int32, Int64, Bool), the driver's standard
+	 * convenience function is safe to use.
+	 */
 	return bson_iter_as_int64(it);
+}
+
+int16_t
+bsonIterInt16(BSON_ITERATOR *it)
+{
+	BSON_ASSERT(it);
+
+	/*
+	 * Handle Double and Int64 separately so NaN/Infinity/out-of-range
+	 * values raise a smallint-specific error.  In particular, Int64 can't
+	 * be routed through bsonIterInt32(), since a value outside int32's
+	 * range would be rejected there with an "integer" message even though
+	 * the target type is smallint.
+	 */
+	switch ((int) ITER_TYPE(it))
+	{
+		case BSON_TYPE_DOUBLE:
+			return (int16) bson_double_to_int(bson_iter_double(it),
+											  PG_INT16_MIN, PG_INT16_MAX,
+											  true, "smallint");
+		case BSON_TYPE_INT64:
+			return (int16) bson_int64_to_int(bson_iter_int64(it),
+											 PG_INT16_MIN, PG_INT16_MAX,
+											 "smallint");
+		default:
+			/* BSON_TYPE_BOOL, BSON_TYPE_INT32: bsonIterInt32() can't error
+			 * for these, so the range check below always reports the
+			 * correct type name. */
+			{
+				int32		val = bsonIterInt32(it);
+
+				if (val < PG_INT16_MIN || val > PG_INT16_MAX)
+					ereport(ERROR,
+							(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+							 errmsg("value \"%d\" is out of range for type smallint",
+									val)));
+
+				return (int16) val;
+			}
+	}
 }
 
 double

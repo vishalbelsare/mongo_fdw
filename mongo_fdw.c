@@ -2453,7 +2453,7 @@ column_value(BSON_ITERATOR *bsonIterator, Oid columnTypeId,
 	{
 		case INT2OID:
 			{
-				int16		value = (int16) bsonIterInt32(bsonIterator);
+				int16		value = bsonIterInt16(bsonIterator);
 
 				columnValue = Int16GetDatum(value);
 			}

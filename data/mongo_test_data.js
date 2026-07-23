@@ -22,6 +22,7 @@ db.test3.drop();
 db.test4.drop();
 db.mongo_test.drop();
 db.test5.drop();
+db.test_special_floats.drop();
 // Below queries will create and insert values in collections
 db.mongo_test.insert({a : NumberInt(0), b : "mongo_test collection"});
 db.test_tbl2.insertMany([
@@ -111,4 +112,44 @@ db.mongo_test_large.insertMany([
   {_id: NumberInt(2), a01 : NumberInt(1), a02 : NumberInt(2), a03 : NumberInt(3), a04 : NumberInt(4), a05 : NumberInt(5), a06 : NumberInt(6), a07 : NumberInt(7), a08 : NumberInt(8), a09 : NumberInt(9), a10 : NumberInt(10), a11 : NumberInt(11), a12 : NumberInt(12), a13 : NumberInt(13), a14 : NumberInt(14), a15 : NumberInt(15), a16 : NumberInt(16), a17 : NumberInt(17), a18 : NumberInt(18), a19 : NumberInt(19), a20 : NumberInt(20), a21 : NumberInt(21), a22 : NumberInt(22), a23 : NumberInt(23), a24 : NumberInt(24), a25 : NumberInt(25), a26 : NumberInt(26), a27 : NumberInt(27), a28 : NumberInt(28), a29 : NumberInt(29), a30 : NumberInt(30), a31 : NumberInt(31), a32 : NumberInt(132), a33 : NumberInt(133), a34 : NumberInt(134), a35 : NumberInt(135)},
   {_id: NumberInt(3), a01 : NumberInt(1), a02 : NumberInt(2), a03 : NumberInt(3), a04 : NumberInt(4), a05 : NumberInt(5), a06 : NumberInt(6), a07 : NumberInt(7), a08 : NumberInt(8), a09 : NumberInt(9), a10 : NumberInt(10), a11 : NumberInt(11), a12 : NumberInt(12), a13 : NumberInt(13), a14 : NumberInt(14), a15 : NumberInt(15), a16 : NumberInt(16), a17 : NumberInt(17), a18 : NumberInt(18), a19 : NumberInt(19), a20 : NumberInt(20), a21 : NumberInt(21), a22 : NumberInt(22), a23 : NumberInt(23), a24 : NumberInt(24), a25 : NumberInt(25), a26 : NumberInt(26), a27 : NumberInt(27), a28 : NumberInt(28), a29 : NumberInt(29), a30 : NumberInt(30), a31 : NumberInt(31), a32 : NumberInt(32), a33 : NumberInt(3), a34 : NumberInt(34), a35 : NumberInt(35)},
   {_id: NumberInt(4), a01 : NumberInt(1), a02 : NumberInt(2), a03 : NumberInt(3), a04 : NumberInt(4), a05 : NumberInt(5), a06 : NumberInt(6), a07 : NumberInt(7), a08 : NumberInt(8), a09 : NumberInt(9), a10 : NumberInt(10), a11 : NumberInt(11), a12 : NumberInt(12), a13 : NumberInt(13), a14 : NumberInt(14), a15 : NumberInt(15), a16 : NumberInt(16), a17 : NumberInt(17), a18 : NumberInt(18), a19 : NumberInt(19), a20 : NumberInt(20), a21 : NumberInt(21), a22 : NumberInt(22), a23 : NumberInt(23), a24 : NumberInt(24), a25 : NumberInt(25), a26 : NumberInt(26), a27 : NumberInt(27), a28 : NumberInt(28), a29 : NumberInt(29), a30 : NumberInt(30), a31 : NumberInt(31), a32 : NumberInt(32), a33 : NumberInt(33), a34 : NumberInt(34), a35 : NumberInt(35)}
+]);
+
+db.test_special_floats.insertMany([
+	{_id: NumberInt(1), value: 123.456},
+	{_id: NumberInt(2), value: NaN},
+	{_id: NumberInt(3), value: Infinity},
+	{_id: NumberInt(4), value: -Infinity},
+	{_id: NumberInt(5), value: 2147483646.9},
+	{_id: NumberInt(6), value: -2147483647.9},
+	// INT32 boundary cases
+	{_id: NumberInt(7), value: 2147483647.0},     // INT32_MAX
+	{_id: NumberInt(8), value: 2147483648.0},     // INT32_MAX + 1
+	{_id: NumberInt(9), value: -2147483648.0},    // INT32_MIN
+	{_id: NumberInt(10), value: -2147483649.0},   // INT32_MIN - 1
+	// Large values for INT64 testing
+	{_id: NumberInt(11), value: 1000000000000000.1},
+	{_id: NumberInt(12), value: -1000000000000000.1},
+	// INT64 boundary cases - the critical edge case
+	{_id: NumberInt(113), value: 9223372036854775807.0},  // INT64_MAX
+	{_id: NumberInt(13), value: 9223372036854775808.0},   // INT64_MAX + 1
+	{_id: NumberInt(14), value: -9223372036854775808.0},  // INT64_MIN
+	{_id: NumberInt(114), value: -9223372036854775809.0}, // INT64_MIN - 1
+	// Definitively outside the INT64 range
+	{_id: NumberInt(15), value: 9223372036854780000.0},
+	{_id: NumberInt(16), value: -9223372036854780000.0},
+	// Massive scientific notation (Way out of range)
+	{_id: NumberInt(17), value: 1.5e30},
+	// INT16 (SMALLINT) boundary cases
+	{_id: NumberInt(18), value: 32767.0},         // INT16_MAX
+	{_id: NumberInt(19), value: 32768.0},         // INT16_MAX + 1
+	{_id: NumberInt(20), value: -32768.0},        // INT16_MIN
+	{_id: NumberInt(21), value: -32769.0},        // INT16_MIN - 1
+	{_id: NumberInt(22), value: 100.5},           // Normal value for SMALLINT
+	// Non-double (BSON int32) values feeding the smallint conversion path
+	{_id: NumberInt(23), value: NumberInt(30000)},  // Fits SMALLINT
+	{_id: NumberInt(24), value: NumberInt(40000)},  // Exceeds SMALLINT, fits INT32
+	{_id: NumberInt(25), value: NumberInt(-40000)}, // Exceeds SMALLINT, fits INT32, negative
+	// BSON int64 values feeding the smallint conversion path
+	{_id: NumberInt(26), value: NumberLong(100)},         // Fits SMALLINT
+	{_id: NumberInt(27), value: NumberLong(3000000000)}   // Exceeds INT32 as well
 ]);

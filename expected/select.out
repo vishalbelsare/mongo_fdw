@@ -1395,6 +1395,178 @@ SELECT * FROM testlog t INNER JOIN testdevice d
  658040214898199d6e0173d0 | hello log | 001122334455   |                      3 | 6580400c4898199d6e0173cd | test device | 001122334455 |     3
 (1 row)
 
+-- FDW-757: Test NaN and Infinity handling in double to integer conversion
+-- Verify that special floating-point values are properly rejected
+CREATE FOREIGN TABLE fdw757_special_floats (_id INT, value INT)
+  SERVER mongo_server OPTIONS (database 'mongo_fdw_regress', collection 'test_special_floats');
+-- Normal value should work
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 1;
+ _id | value 
+-----+-------
+   1 |   123
+(1 row)
+
+-- NaN should raise error
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 2;
+ERROR:  cannot convert NaN to integer
+-- Positive Infinity should raise error
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 3;
+ERROR:  cannot convert infinity to integer
+-- Negative Infinity should raise error
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 4;
+ERROR:  cannot convert infinity to integer
+-- Large but valid values within range should work
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 5;
+ _id |   value    
+-----+------------
+   5 | 2147483646
+(1 row)
+
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 6;
+ _id |    value    
+-----+-------------
+   6 | -2147483647
+(1 row)
+
+-- INT32 boundary tests
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 7;  -- INT32_MAX (should work)
+ _id |   value    
+-----+------------
+   7 | 2147483647
+(1 row)
+
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 8;  -- INT32_MAX + 1 (should error)
+ERROR:  value "2147483648.000000" is out of range for type integer
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 9;  -- INT32_MIN (should work)
+ _id |    value    
+-----+-------------
+   9 | -2147483648
+(1 row)
+
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 10; -- INT32_MIN - 1 (should error)
+ERROR:  value "-2147483649.000000" is out of range for type integer
+-- Large invalid values shouldn't work (out of range)
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 11;
+ERROR:  value "1000000000000000.125000" is out of range for type integer
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 17;
+ERROR:  value "1499999999999999889089448902656.000000" is out of range for type integer
+DROP FOREIGN TABLE fdw757_special_floats;
+CREATE FOREIGN TABLE fdw757_special_floats (_id INT, value BIGINT)
+  SERVER mongo_server OPTIONS (database 'mongo_fdw_regress', collection 'test_special_floats');
+-- Normal value should work
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 1;
+ _id | value 
+-----+-------
+   1 |   123
+(1 row)
+
+-- NaN should raise error
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 2;
+ERROR:  cannot convert NaN to bigint
+-- Positive Infinity should raise error
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 3;
+ERROR:  cannot convert infinity to bigint
+-- Negative Infinity should raise error
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 4;
+ERROR:  cannot convert infinity to bigint
+-- Large but valid values within range should work
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 11;
+ _id |      value       
+-----+------------------
+  11 | 1000000000000000
+(1 row)
+
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 12;
+ _id |       value       
+-----+-------------------
+  12 | -1000000000000000
+(1 row)
+
+-- INT64 boundary tests - THE CRITICAL EDGE CASE
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 113; -- INT64_MAX (should work, but throws an error due to precision loss from int64 to double conversion)
+ERROR:  value "9223372036854775808.000000" is out of range for type bigint
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 13;  -- INT64_MAX + 1 (should error)
+ERROR:  value "9223372036854775808.000000" is out of range for type bigint
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 14;  -- INT64_MIN (should work)
+ _id |        value         
+-----+----------------------
+  14 | -9223372036854775808
+(1 row)
+
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 114; -- INT64_MIN - 1 (should error, but works due to precision loss from int64 to double conversion)
+ _id |        value         
+-----+----------------------
+ 114 | -9223372036854775808
+(1 row)
+
+-- Large invalid values shouldn't work (out of range)
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 15;
+ERROR:  value "9223372036854779904.000000" is out of range for type bigint
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 16;
+ERROR:  value "-9223372036854779904.000000" is out of range for type bigint
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 17;
+ERROR:  value "1499999999999999889089448902656.000000" is out of range for type bigint
+DROP FOREIGN TABLE fdw757_special_floats;
+CREATE FOREIGN TABLE fdw757_special_floats (_id INT, value SMALLINT)
+  SERVER mongo_server OPTIONS (database 'mongo_fdw_regress', collection 'test_special_floats');
+-- Normal value should work
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 22;
+ _id | value 
+-----+-------
+  22 |   100
+(1 row)
+
+-- NaN should raise error
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 2;
+ERROR:  cannot convert NaN to smallint
+-- Positive Infinity should raise error
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 3;
+ERROR:  cannot convert infinity to smallint
+-- Negative Infinity should raise error
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 4;
+ERROR:  cannot convert infinity to smallint
+-- INT16 boundary tests
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 18; -- INT16_MAX (should work)
+ _id | value 
+-----+-------
+  18 | 32767
+(1 row)
+
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 19; -- INT16_MAX + 1 (should error)
+ERROR:  value "32768" is out of range for type smallint
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 20; -- INT16_MIN (should work)
+ _id | value  
+-----+--------
+  20 | -32768
+(1 row)
+
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 21; -- INT16_MIN - 1 (should error)
+ERROR:  value "-32769" is out of range for type smallint
+-- Out of range values shouldn't work
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 5;  -- INT32 value (out of range)
+ERROR:  value "2147483646.900000" is out of range for type smallint
+-- Non-double (BSON int32) values feeding the smallint conversion path
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 23; -- fits smallint (should work)
+ _id | value 
+-----+-------
+  23 | 30000
+(1 row)
+
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 24; -- exceeds smallint, fits int32 (should error)
+ERROR:  value "40000" is out of range for type smallint
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 25; -- exceeds smallint, fits int32, negative (should error)
+ERROR:  value "-40000" is out of range for type smallint
+-- BSON int64 values feeding the smallint conversion path. The error message
+-- must say "smallint", not "integer", even though the value also exceeds
+-- int32's range.
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 26; -- fits smallint (should work)
+ _id | value 
+-----+-------
+  26 |   100
+(1 row)
+
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 27; -- exceeds int32 too (should error)
+ERROR:  value "3000000000" is out of range for type smallint
 -- Cleanup
 DELETE FROM f_mongo_test WHERE a != 0;
 DROP TABLE l_test_tbl1;
@@ -1423,6 +1595,7 @@ DROP FOREIGN TABLE f_test_tbl6;
 DROP FOREIGN TABLE f_test_tbl7;
 DROP FOREIGN TABLE testlog;
 DROP FOREIGN TABLE testdevice;
+DROP FOREIGN TABLE fdw757_special_floats;
 DROP USER MAPPING FOR public SERVER mongo_server;
 DROP SERVER mongo_server;
 DROP EXTENSION mongo_fdw;

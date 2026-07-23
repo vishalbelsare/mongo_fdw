@@ -44,6 +44,7 @@ void		bsonDestroy(BSON *b);
 
 bool		bsonIterInit(BSON_ITERATOR *it, BSON *b);
 bool		bsonIterSubObject(BSON_ITERATOR *it, BSON *b);
+int16_t		bsonIterInt16(BSON_ITERATOR *it);
 int32_t		bsonIterInt32(BSON_ITERATOR *it);
 int64_t		bsonIterInt64(BSON_ITERATOR *it);
 double		bsonIterDouble(BSON_ITERATOR *it);

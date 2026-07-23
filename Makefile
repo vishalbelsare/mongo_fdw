@@ -17,7 +17,7 @@ LIBJSON_OBJS =  $(LIBJSON)/json_util.o $(LIBJSON)/json_object.o $(LIBJSON)/json_
                                 $(LIBJSON)/arraylist.o $(LIBJSON)/random_seed.o $(LIBJSON)/debug.o $(LIBJSON)/strerror_override.o
 
 MONGO_INCLUDE = $(shell pkg-config --cflags libmongoc-1.0)
-PG_CPPFLAGS = --std=c99 $(MONGO_INCLUDE) -I$(LIBJSON)
+PG_CPPFLAGS = $(MONGO_INCLUDE) -I$(LIBJSON)
 SHLIB_LINK = $(shell pkg-config --libs libmongoc-1.0)
 
 OBJS = connection.o option.o mongo_wrapper.o mongo_fdw.o mongo_query.o deparse.o $(LIBJSON_OBJS)
@@ -37,14 +37,29 @@ ifdef USE_PGXS
 
 PG_CONFIG = pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
+
+#
+# PostgreSQL 19 and later require a C11 compiler: their c.h relies on the
+# C11 static_assert(), which is not available under C99.  Earlier releases
+# continue to be built with C99.  The major version is determined here, via
+# pg_config, because PGXS folds PG_CPPFLAGS into CPPFLAGS at include time, so
+# selecting the standard afterwards (using MAJORVERSION) would be too late.
+#
+PG_MAJORVERSION := $(shell $(PG_CONFIG) --version | sed 's/^[^0-9]*\([0-9][0-9]*\).*/\1/')
+ifeq ($(shell test $(PG_MAJORVERSION) -ge 19 && echo yes),yes)
+    PG_CPPFLAGS += -std=c11
+else
+    PG_CPPFLAGS += -std=c99
+endif
+
 include $(PGXS)
 
 ifndef MAJORVERSION
     MAJORVERSION := $(basename $(VERSION))
 endif
 
-ifeq (,$(findstring $(MAJORVERSION), 14 15 16 17 18))
-    $(error PostgreSQL 14, 15, 16, 17, or 18 is required to compile this extension)
+ifeq (,$(findstring $(MAJORVERSION), 14 15 16 17 18 19))
+    $(error PostgreSQL 14, 15, 16, 17, 18, or 19 is required to compile this extension)
 endif
 
 else

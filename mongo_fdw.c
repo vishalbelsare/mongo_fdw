@@ -15,6 +15,8 @@
 #include "postgres.h"
 #include "mongo_wrapper.h"
 
+#include <math.h>
+
 #include "access/htup_details.h"
 #include "access/table.h"
 #include "catalog/heap.h"
@@ -1559,6 +1561,7 @@ mongoBeginForeignModify(ModifyTableState *mtstate,
 						int eflags)
 {
 	MongoFdwModifyState *fmstate;
+	EState	   *estate = mtstate->ps.state;
 	Relation	rel = resultRelInfo->ri_RelationDesc;
 	AttrNumber	n_params;
 	Oid			typefnoid = InvalidOid;
@@ -1569,10 +1572,7 @@ mongoBeginForeignModify(ModifyTableState *mtstate,
 	ForeignServer *server;
 	UserMapping *user;
 	ForeignTable *table;
-#if PG_VERSION_NUM >= 160000
-	ForeignScan *fsplan = (ForeignScan *) mtstate->ps.plan;
-#else
-	EState	   *estate = mtstate->ps.state;
+#if PG_VERSION_NUM < 160000
 	RangeTblEntry *rte;
 #endif
 
@@ -1584,7 +1584,7 @@ mongoBeginForeignModify(ModifyTableState *mtstate,
 		return;
 
 #if PG_VERSION_NUM >= 160000
-	userid = fsplan->checkAsUser ? fsplan->checkAsUser : GetUserId();
+	userid = ExecGetResultRelCheckAsUser(resultRelInfo, estate);
 #else
 	rte = rt_fetch(resultRelInfo->ri_RangeTableIndex, estate->es_range_table);
 	userid = rte->checkAsUser ? rte->checkAsUser : GetUserId();

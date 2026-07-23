@@ -159,7 +159,7 @@ mongo_get_connection(ForeignServer *server, UserMapping *user,
  *		Delete all the cache entries on backend exits.
  */
 void
-mongo_cleanup_connection()
+mongo_cleanup_connection(void)
 {
 	HASH_SEQ_STATUS scan;
 	ConnCacheEntry *entry;

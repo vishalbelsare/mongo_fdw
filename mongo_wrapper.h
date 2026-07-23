@@ -64,7 +64,6 @@ const bson_value_t *bsonIterValue(BSON_ITERATOR *i);
 
 void		bsonIteratorFromBuffer(BSON_ITERATOR *i, const char *buffer);
 
-BSON	   *bsonCreate();
 bool		bsonAppendOid(BSON *b, const char *key, bson_oid_t *v);
 bool		bsonAppendBool(BSON *b, const char *key, bool v);
 bool		bsonAppendNull(BSON *b, const char *key);

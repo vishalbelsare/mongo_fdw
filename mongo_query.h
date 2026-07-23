@@ -15,8 +15,6 @@
 #ifndef MONGO_QUERY_H
 #define MONGO_QUERY_H
 
-#define NUMERICARRAY_OID 1231
-
 /*
  * Context for aggregation pipeline formation.
  */

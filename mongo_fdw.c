@@ -2346,7 +2346,7 @@ column_types_compatible(BSON_TYPE bsonType, Oid columnTypeId)
 			if (bsonType == BSON_TYPE_DATE_TIME)
 				compatibleTypes = true;
 			break;
-		case NUMERICARRAY_OID:
+		case NUMERICARRAYOID:
 			if (bsonType == BSON_TYPE_ARRAY)
 				compatibleTypes = true;
 			break;

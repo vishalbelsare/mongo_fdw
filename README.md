@@ -41,6 +41,12 @@ same MongoDB database connection for all the queries in the same session.
 The previous version would open a new [MongoDB][1] connection for every
 query. This is a performance enhancement.
 
+#### WHERE clause push-down
+WHERE clauses on foreign tables are now pushed down to the remote MongoDB
+server. By executing WHERE clauses directly on the foreign server, we
+significantly reduce data transfer to PostgreSQL, resulting in improved query
+performance.
+
 #### JOIN push-down
 `mongo_fdw` now also supports join push-down. The joins between two
 foreign tables from the same remote MongoDB server are pushed to a remote
@@ -413,7 +419,6 @@ EXPLAIN SELECT * FROM warehouse WHERE warehouse_id = 1;
                            QUERY PLAN
 -----------------------------------------------------------------
  Foreign Scan on warehouse  (cost=0.00..0.00 rows=1000 width=84)
-   Filter: (warehouse_id = 1)
    Foreign Namespace: db.warehouse
 (3 rows)
 ```

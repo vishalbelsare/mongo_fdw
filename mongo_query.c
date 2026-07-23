@@ -850,7 +850,7 @@ append_mongo_value(BSON *queryDocument, const char *keyName, Datum value,
 										valueMilliSecs);
 			}
 			break;
-		case NUMERICARRAY_OID:
+		case NUMERICARRAYOID:
 			{
 				ArrayType  *array;
 				Oid			elmtype;
@@ -1281,14 +1281,7 @@ foreign_expr_walker(Node *node, foreign_glob_cxt *glob_cxt,
 				List	   *l = (List *) node;
 				ListCell   *lc;
 
-				/*
-				 * Recurse to component subexpressions.
-				 *
-				 * For simple relation, if the comparison is between two
-				 * columns of the same table, then we don't push down because
-				 * building corresponding MongoDB query is not possible with
-				 * the cirrent MongoC driver.
-				 */
+				/* Recurse to component subexpressions. */
 				foreach(lc, l)
 				{
 					if ((!foreign_expr_walker((Node *) lfirst(lc),

@@ -151,5 +151,13 @@ db.test_special_floats.insertMany([
 	{_id: NumberInt(25), value: NumberInt(-40000)}, // Exceeds SMALLINT, fits INT32, negative
 	// BSON int64 values feeding the smallint conversion path
 	{_id: NumberInt(26), value: NumberLong(100)},         // Fits SMALLINT
-	{_id: NumberInt(27), value: NumberLong(3000000000)}   // Exceeds INT32 as well
+	{_id: NumberInt(27), value: NumberLong(3000000000)},  // Exceeds INT32 as well
+	// Round-to-nearest (not truncate) semantics, matching PostgreSQL's own
+	// float-to-integer coercion.
+	{_id: NumberInt(28), value: 0.9},              // Rounds to 1, not truncated to 0
+	{_id: NumberInt(29), value: -0.9},             // Rounds to -1, not truncated to 0
+	{_id: NumberInt(30), value: 2147483647.4},     // Rounds down to INT32_MAX, fits
+	{_id: NumberInt(31), value: 2147483647.6},     // Rounds up past INT32_MAX, errors
+	{_id: NumberInt(32), value: 2.5},              // Round-half-to-even -> 2
+	{_id: NumberInt(33), value: 3.5}               // Round-half-to-even -> 4
 ]);

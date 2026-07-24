@@ -372,6 +372,15 @@ bson_double_to_int(double val, int64 minVal, int64 maxVal, bool maxExact,
 				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
 				 errmsg("cannot convert infinity to %s", typeName)));
 
+	/*
+	 * Round to the nearest integer first, matching PostgreSQL's own
+	 * float-to-integer coercion (see dtoi2/dtoi4/dtoi8 in float.c), rather
+	 * than truncating toward zero.  This must happen before the range
+	 * check below, since rounding can itself push a value out of range
+	 * (e.g. a value just under INT32_MAX that rounds up past it).
+	 */
+	val = rint(val);
+
 	/* Check for integer range overflow */
 	if (val < (double) minVal ||
 		(maxExact ? val > (double) maxVal : val >= (double) maxVal))

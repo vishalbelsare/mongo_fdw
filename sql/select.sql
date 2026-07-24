@@ -389,6 +389,14 @@ SELECT _id, value FROM fdw757_special_floats WHERE _id = 10; -- INT32_MIN - 1 (s
 -- Large invalid values shouldn't work (out of range)
 SELECT _id, value FROM fdw757_special_floats WHERE _id = 11;
 SELECT _id, value FROM fdw757_special_floats WHERE _id = 17;
+-- Round-to-nearest (not truncate) semantics, matching PostgreSQL's own
+-- float-to-integer coercion (e.g. INSERT INTO ... VALUES (0.9) rounds to 1).
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 28; -- 0.9 rounds to 1 (should work)
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 29; -- -0.9 rounds to -1 (should work)
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 30; -- rounds down to INT32_MAX (should work)
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 31; -- rounds up past INT32_MAX (should error)
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 32; -- round-half-to-even: 2.5 -> 2
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 33; -- round-half-to-even: 3.5 -> 4
 DROP FOREIGN TABLE fdw757_special_floats;
 CREATE FOREIGN TABLE fdw757_special_floats (_id INT, value BIGINT)
   SERVER mongo_server OPTIONS (database 'mongo_fdw_regress', collection 'test_special_floats');
@@ -412,6 +420,9 @@ SELECT _id, value FROM fdw757_special_floats WHERE _id = 114; -- INT64_MIN - 1 (
 SELECT _id, value FROM fdw757_special_floats WHERE _id = 15;
 SELECT _id, value FROM fdw757_special_floats WHERE _id = 16;
 SELECT _id, value FROM fdw757_special_floats WHERE _id = 17;
+-- Round-to-nearest (not truncate) semantics, at the bigint width too.
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 28; -- 0.9 rounds to 1 (should work)
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 29; -- -0.9 rounds to -1 (should work)
 DROP FOREIGN TABLE fdw757_special_floats;
 CREATE FOREIGN TABLE fdw757_special_floats (_id INT, value SMALLINT)
   SERVER mongo_server OPTIONS (database 'mongo_fdw_regress', collection 'test_special_floats');
@@ -439,6 +450,9 @@ SELECT _id, value FROM fdw757_special_floats WHERE _id = 25; -- exceeds smallint
 -- int32's range.
 SELECT _id, value FROM fdw757_special_floats WHERE _id = 26; -- fits smallint (should work)
 SELECT _id, value FROM fdw757_special_floats WHERE _id = 27; -- exceeds int32 too (should error)
+-- Round-to-nearest (not truncate) semantics, at the smallint width too.
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 28; -- 0.9 rounds to 1 (should work)
+SELECT _id, value FROM fdw757_special_floats WHERE _id = 29; -- -0.9 rounds to -1 (should work)
 
 -- Cleanup
 DELETE FROM f_mongo_test WHERE a != 0;

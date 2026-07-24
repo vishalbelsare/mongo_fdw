@@ -1627,6 +1627,37 @@ SELECT _id, value FROM fdw757_special_floats WHERE _id = 29; -- -0.9 rounds to -
   29 |    -1
 (1 row)
 
+-- Aggregate pushdown bypasses the NaN/Infinity validation applied to normal
+-- row fetches: SUM(bigint) is computed as NUMERIC, which can hold NaN and
+-- Infinity, so a pushed-down SUM over such data silently succeeds instead of
+-- erroring like a plain SELECT of the same column would.
+CREATE FOREIGN TABLE fdw770_special_floats (_id INT, value BIGINT)
+  SERVER mongo_server OPTIONS (database 'mongo_fdw_regress', collection 'test_special_floats');
+-- Pushed down (default): MongoDB computes 123.456 + NaN, silently returns NaN.
+SELECT sum(value) FROM fdw770_special_floats WHERE _id = 1 OR _id = 2;
+ sum 
+-----
+ NaN
+(1 row)
+
+-- Not pushed down: PostgreSQL fetches and validates each row itself, so the
+-- same data now correctly errors.
+SET mongo_fdw.enable_aggregate_pushdown TO false;
+SELECT sum(value) FROM fdw770_special_floats WHERE _id = 1 OR _id = 2;
+ERROR:  cannot convert NaN to bigint
+SET mongo_fdw.enable_aggregate_pushdown TO true;
+-- Same story for Infinity: pushed down silently returns Infinity...
+SELECT sum(value) FROM fdw770_special_floats WHERE _id = 1 OR _id = 3;
+   sum    
+----------
+ Infinity
+(1 row)
+
+-- ...but errors when PostgreSQL computes it locally instead.
+SET mongo_fdw.enable_aggregate_pushdown TO false;
+SELECT sum(value) FROM fdw770_special_floats WHERE _id = 1 OR _id = 3;
+ERROR:  cannot convert infinity to bigint
+SET mongo_fdw.enable_aggregate_pushdown TO true;
 -- Cleanup
 DELETE FROM f_mongo_test WHERE a != 0;
 DROP TABLE l_test_tbl1;
@@ -1656,6 +1687,7 @@ DROP FOREIGN TABLE f_test_tbl7;
 DROP FOREIGN TABLE testlog;
 DROP FOREIGN TABLE testdevice;
 DROP FOREIGN TABLE fdw757_special_floats;
+DROP FOREIGN TABLE fdw770_special_floats;
 DROP USER MAPPING FOR public SERVER mongo_server;
 DROP SERVER mongo_server;
 DROP EXTENSION mongo_fdw;

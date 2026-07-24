@@ -444,6 +444,18 @@ Limitations
     pipeline expressions, causing queries to return empty results. Column names
     with `$` in any other position (e.g., `field$name`, `col$`) function normally.
 
+  - When aggregate functions (e.g., `SUM`, `AVG`) over `SMALLINT`/`INTEGER`/
+    `BIGINT` columns are pushed down to MongoDB, the `NaN`/`Infinity`
+    validation applied during normal row fetches does not apply to the
+    aggregate result. PostgreSQL computes such aggregates as `NUMERIC`, which
+    can legitimately hold `NaN`/`Infinity`, so if the underlying MongoDB
+    documents contain a `NaN` or `Infinity` value in that field, the
+    aggregate may silently return `NaN`/`Infinity` instead of erroring, even
+    though selecting the column directly correctly raises an error for the
+    same data. Setting `mongo_fdw.enable_aggregate_pushdown` to `false`
+    forces the aggregate to be computed locally by PostgreSQL, which applies
+    the same validation as a normal row fetch.
+
 Contributing
 ------------
 
